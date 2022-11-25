@@ -1,0 +1,13 @@
+.container {
+  display: flex;
+  justify-content: space-around;
+  width: 30%;
+  padding-top: 30px;
+  padding-left: 8%;
+}
+
+.container .item {
+  font-family: "HeroNewMedium";
+  color: white;
+  font-size: 13px;
+}

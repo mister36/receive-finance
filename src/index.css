@@ -33,3 +33,8 @@ code {
   font-family: "HeroNewLight";
   src: local("HeroNewLight"), url("./fonts/Hero-New/Hero New Light.otf");
 }
+
+@font-face {
+  font-family: "HeroNewSemiBold";
+  src: local("HeroNewSemiBold"), url("./fonts/Hero-New/Hero New SemiBold.otf");
+}

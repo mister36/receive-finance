@@ -1,29 +1,20 @@
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import Home from "./pages/Home.js";
+import Auth from "./pages/Auth.js";
+
+import Header from "./components/Header";
+
 import "./App.css";
 
 function App() {
   return (
-    <div className="App">
-      <div className="main-content">
-        <div className="left">
-          <div className="header">Receive Finance: Unlock Liquidity in A/R</div>
-          <div className="subheader">
-            Receive allows businesses to tokenize their account receivables and
-            access future funds in a fraction of the time. Our marketplace
-            enables investors to earn guaranteed yield from a previously
-            walled-off asset class.
-          </div>
-        </div>
-
-        <div className="right">
-          <div className="button" id="wallet">
-            Connect wallet
-          </div>
-          <div className="button" id="signup">
-            Sign up <span id="small">(Required for businesses)</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Router>
+      <Header />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/signup" element={<Auth />} />
+      </Routes>
+    </Router>
   );
 }
 

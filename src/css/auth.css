@@ -1,0 +1,64 @@
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  align-items: center;
+  padding-top: 50px;
+}
+
+/* .auth-container .content-wrapper {
+
+} */
+
+.auth-container .header {
+  color: #fff;
+  font-size: 30px;
+  font-family: "HeroNewSemiBold";
+  margin-bottom: 25px;
+}
+
+.auth-container .info-container {
+  margin-bottom: 30px;
+}
+
+.auth-container .info-container .input-header {
+  color: #fff;
+  font-size: 15px;
+  font-family: "HeroNewMedium";
+  margin-bottom: 7px;
+}
+
+.auth-container .info-container input {
+  background-color: #2f2f2f;
+  color: white;
+  height: 24px;
+  width: 400px;
+  padding: 16px;
+  border-style: none;
+  border: 1px solid white;
+  border-radius: 8px;
+  font-size: 16px;
+  /* opacity: 0.5; */
+}
+
+.auth-container .info-container input:focus {
+  outline-width: 0;
+}
+
+.auth-container .button {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  width: 200px;
+  height: 30px;
+  border-radius: 25px;
+  text-align: center;
+  padding: 10px;
+  cursor: pointer;
+  background-color: #f24b4b;
+  color: white;
+  width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}

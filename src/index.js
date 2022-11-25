@@ -8,6 +8,7 @@ import "./fonts/Hero-New/Hero New Bold.otf";
 import "./fonts/Hero-New/Hero New Regular.otf";
 import "./fonts/Hero-New/Hero New Medium.otf";
 import "./fonts/Hero-New/Hero New Light.otf";
+import "./fonts/Hero-New/Hero New SemiBold.otf";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
