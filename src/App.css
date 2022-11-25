@@ -1,38 +1,66 @@
 .App {
-  text-align: center;
+  height: 100vh;
+  width: 100vw;
+  margin-top: 20%;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.App .main-content {
+  display: flex;
+  padding-left: 15%;
+  padding-right: 15%;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.App .main-content .left {
+  width: 60%;
+  /* padding-left: 30px; */
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.App .main-content .right {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
+  width: 30%;
+}
+
+.App .main-content .header {
+  color: #f24b4b;
+  font-family: "HeroNewBold";
+  font-size: 53px;
+  margin-bottom: 30px;
+  margin-top: -12px;
+}
+
+.App .main-content .subheader {
+  color: white;
+  font-family: "HeroNewMedium";
+  font-size: 15px;
+}
+
+.App .main-content .right .button {
+  display: flex;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  align-content: center;
+  flex-direction: column;
+  width: 200px;
+  height: 30px;
+  border-radius: 25px;
+  text-align: center;
+  padding: 10px;
+}
+
+.App .main-content .right .button#wallet {
+  background-color: #f24b4b;
+  color: white;
+  margin-bottom: 70px;
+}
+
+.App .main-content .right .button#signup {
+  border: 2px white solid;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.App .main-content .right .button #small {
+  margin-top: 2px;
+  font-size: 10px;
+  font-family: HeroNewLight;
 }
