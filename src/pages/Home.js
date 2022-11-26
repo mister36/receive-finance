@@ -20,7 +20,7 @@ function App() {
             Connect wallet
           </div>
 
-          <Link to="/signup">
+          <Link to="/auth">
             <div className="button" id="signup">
               Sign up <span id="small">(Required for businesses)</span>
             </div>

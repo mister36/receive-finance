@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home.js";
 import Auth from "./pages/Auth.js";
+import BusinessHome from "./pages/BusinessHome.js";
 
 import Header from "./components/Header";
 
@@ -12,7 +13,8 @@ function App() {
       <Header />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/signup" element={<Auth />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/business" element={<BusinessHome />} />
       </Routes>
     </Router>
   );

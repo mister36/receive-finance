@@ -55,10 +55,25 @@
   border-radius: 25px;
   text-align: center;
   padding: 10px;
-  cursor: pointer;
   background-color: #f24b4b;
   color: white;
   width: 300px;
   margin-left: auto;
   margin-right: auto;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.auth-container .button.active {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.auth-container .content-wrapper .other-text {
+  color: #f24b4b;
+  font-size: 13px;
+  font-family: "HeroNewBold";
+  text-align: center;
+  margin-top: 15px;
+  cursor: pointer;
 }
