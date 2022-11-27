@@ -9,9 +9,9 @@ function App() {
           <div className="header">Receive Finance: Unlock Liquidity in A/R</div>
           <div className="subheader">
             Receive allows businesses to tokenize their account receivables and
-            access future funds in a fraction of the time. Our marketplace
-            enables investors to earn guaranteed yield from a previously
-            walled-off asset class.
+            access future funds in a fraction of the time. Our service enables
+            investors to earn guaranteed yield from a previously walled-off
+            asset class.
           </div>
         </div>
 
