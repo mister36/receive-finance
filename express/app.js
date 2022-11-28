@@ -11,11 +11,13 @@ dotenv.config({ path: `${__dirname}/../config.env` });
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({ credentials: true, origin: "http://localhost:3000" }));
 app.use(morgan("dev"));
-app.use(cookieParser());
 app.post("/api/v1/auth/signup", authController.signUp);
 app.post("/api/v1/auth/login", authController.login);
+
+app.use(cookieParser());
+app.use(authController.verifyUserToken);
 app.use(
   jwt({
     secret: process.env.JWT_SECRET,
@@ -23,6 +25,9 @@ app.use(
     algorithms: ["HS256"],
   })
 );
+
+app.get("/api/v1/auth/wallet", authController.getWalletStatus);
+app.post("/api/v1/auth/wallet/update", authController.updateWalletStatus);
 
 app.all("*", (_, res) => {
   res.send("Invalid route");

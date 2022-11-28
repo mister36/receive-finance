@@ -1,10 +1,15 @@
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../stores";
 import "../App.css";
 
 function App() {
   const navigate = useNavigate();
+
+  const [updateWalletStatus] = useAuthStore((state) => [
+    state.updateWalletStatus,
+  ]);
 
   const [authAction, setAuthAction] = useState("signup");
   const [business, setBusiness] = useState("");
@@ -63,6 +68,10 @@ function App() {
       );
 
       console.log(response);
+
+      if (response.data.hasWallet) {
+        updateWalletStatus();
+      }
 
       if (response.data.token && response.data.token.length) {
         navigate("/business");

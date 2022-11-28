@@ -28,7 +28,8 @@
     "react-typing-animation": "^1.6.2",
     "reactjs-popup": "^2.0.5",
     "web-vitals": "^2.1.4",
-    "xrpl": "^2.6.0"
+    "xrpl": "^2.6.0",
+    "zustand": "^4.1.4"
   },
   "scripts": {
     "start": "react-app-rewired start",

@@ -15,6 +15,7 @@ exports.signUp = async (req, res) => {
       agentAddress,
       email,
       password: passwordHash,
+      hasWallet: false,
     });
 
     const token = jwt.sign({ business, email }, process.env.JWT_SECRET, {
@@ -47,7 +48,8 @@ exports.login = async (req, res) => {
       );
 
       res.cookie("token", token, { httpOnly: true });
-      res.json({ token });
+
+      res.json({ token, hasWallet: business.hasWallet });
     } else {
       res.send("no account found");
     }
@@ -56,17 +58,44 @@ exports.login = async (req, res) => {
   }
 };
 
-const verifyUserToken = (req, res, next) => {
-  if (!req.headers.authorization) {
+exports.getWalletStatus = async (req, res) => {
+  try {
+    const user = req.user;
+
+    const business = await main.client
+      .db()
+      .collection("businesses")
+      .findOne({ email: user.email });
+
+    res.json({ hasWallet: business.hasWallet });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.updateWalletStatus = async (req, res) => {
+  try {
+    const user = req.user;
+
+    await main.client
+      .db()
+      .collection("businesses")
+      .updateOne({ email: user.email }, { $set: { hasWallet: true } });
+    res.json({ message: "All good" });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.verifyUserToken = (req, res, next) => {
+  if (!req.cookies.token) {
     return res.status(401).send("Unauthorized request");
   }
-  const token = req.headers["authorization"].split(" ")[1];
-  if (!token) {
-    return res.status(401).send("Access denied. No token provided.");
-  }
+  const token = req.cookies.token;
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded.user;
+    req.user = decoded;
     next();
   } catch (err) {
     res.status(400).send("Invalid token.");
