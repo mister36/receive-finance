@@ -6,6 +6,7 @@ const { expressjwt: jwt } = require("express-jwt");
 const cookieParser = require("cookie-parser");
 const { MongoClient } = require("mongodb");
 const authController = require("./controllers/authController");
+const userController = require("./controllers/userController");
 
 dotenv.config({ path: `${__dirname}/../config.env` });
 
@@ -26,8 +27,9 @@ app.use(
   })
 );
 
-app.get("/api/v1/auth/wallet", authController.getWalletStatus);
-app.post("/api/v1/auth/wallet/update", authController.updateWalletStatus);
+app.get("/api/v1/auth/wallet", authController.getAddress);
+app.post("/api/v1/auth/wallet/update", authController.updateAddress);
+app.get("/api/v1/businesses", userController.getUsers);
 
 app.all("*", (_, res) => {
   res.send("Invalid route");

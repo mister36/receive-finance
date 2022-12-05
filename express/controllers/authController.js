@@ -15,7 +15,7 @@ exports.signUp = async (req, res) => {
       agentAddress,
       email,
       password: passwordHash,
-      hasWallet: false,
+      xrpAddress: "",
     });
 
     const token = jwt.sign({ business, email }, process.env.JWT_SECRET, {
@@ -58,7 +58,7 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.getWalletStatus = async (req, res) => {
+exports.getAddress = async (req, res) => {
   try {
     const user = req.user;
 
@@ -67,20 +67,21 @@ exports.getWalletStatus = async (req, res) => {
       .collection("businesses")
       .findOne({ email: user.email });
 
-    res.json({ hasWallet: business.hasWallet });
+    res.json({ xrpAddress: business.xrpAddress });
   } catch (error) {
     console.log(error);
   }
 };
 
-exports.updateWalletStatus = async (req, res) => {
+exports.updateAddress = async (req, res) => {
   try {
     const user = req.user;
+    const { address } = req.body;
 
     await main.client
       .db()
       .collection("businesses")
-      .updateOne({ email: user.email }, { $set: { hasWallet: true } });
+      .updateOne({ email: user.email }, { $set: { xrpAddress: address } });
     res.json({ message: "All good" });
   } catch (error) {
     console.log(error);
