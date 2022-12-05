@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Wallet } from "xrpl";
+import { Wallet, Client, AccountSetAsfFlags } from "xrpl";
 import Popup from "reactjs-popup";
 import { TypeAnimation } from "react-type-animation";
 import axios from "axios";
@@ -51,6 +51,9 @@ function BusinessHome() {
   const [createPopupOpen, setCreatePopupOpen] = useState(false);
   const [mnemonic, setMnemonic] = useState("");
   const [businessDropdownData, setBusinessDropdownData] = useState([]);
+  const [amount, setAmount] = useState();
+  const [date, setDate] = useState();
+  const [business, setBusiness] = useState();
 
   const generateWallet = async () => {
     const newMnemonic = generateMnemonic();
@@ -59,9 +62,38 @@ function BusinessHome() {
     setMnemonic(newMnemonic);
 
     try {
-      const response = await axios.post("/api/v1/auth/wallet/update", {
+      const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+      await client.connect();
+
+      let response = await axios.get("/api/v1/receivable/address");
+      const receivableAddress = response.data.address;
+
+      await client.fundWallet(newWallet, {
+        faucetHost: null,
+        amount: "30000",
+      });
+
+      const txJson = {
+        TransactionType: "AccountSet",
+        Account: newWallet.address,
+        NFTokenMinter: receivableAddress,
+        SetFlag: AccountSetAsfFlags.asfAuthorizedNFTokenMinter,
+      };
+
+      response = await axios.post("/api/v1/auth/wallet/update", {
         address: newWallet.classicAddress,
       });
+
+      const prepared = await client.autofill(txJson);
+      const signed = newWallet.sign(prepared);
+      const result = await client.submitAndWait(signed.tx_blob);
+
+      if (result.result.meta.TransactionResult === "tesSUCCESS") {
+        console.log("Set minter");
+        console.log(result);
+      } else {
+        throw new Error(`Error setting minter: ${result}`);
+      }
 
       console.log(response);
       console.log(newWallet);
@@ -75,6 +107,20 @@ function BusinessHome() {
 
     console.log(submittedWallet);
     updateWallet(submittedWallet);
+  };
+
+  const createReceivable = async () => {
+    try {
+      const response = await axios.post("/api/v1/receivable/new", {
+        business,
+        amount,
+        date,
+      });
+
+      console.log(response.data);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   useEffect(() => {
@@ -278,18 +324,29 @@ function BusinessHome() {
                       }))}
                     placeholder="Select company..."
                     styles={selectStyles}
+                    onChange={(e) => setBusiness(e.value)}
                   />
                 </div>
                 <div className="row">
                   <div className="header">Amount</div>
-                  <input placeholder="45,386.10" />
+                  <input
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="45,386.10"
+                  />
                 </div>
                 <div className="row">
                   <div className="header">Due Date (MM-DD-YYYY)</div>
-                  <input placeholder="11-15-2023" />
+                  <input
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    placeholder="11-15-2023"
+                  />
                 </div>
                 <div className="row">
-                  <div className="button">Create</div>
+                  <div className="button" onClick={createReceivable}>
+                    Create
+                  </div>
                 </div>
               </div>
             </div>

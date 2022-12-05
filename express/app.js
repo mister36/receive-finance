@@ -7,6 +7,7 @@ const cookieParser = require("cookie-parser");
 const { MongoClient } = require("mongodb");
 const authController = require("./controllers/authController");
 const userController = require("./controllers/userController");
+const nftController = require("./controllers/nftController");
 
 dotenv.config({ path: `${__dirname}/../config.env` });
 
@@ -14,6 +15,7 @@ const app = express();
 app.use(express.json());
 app.use(cors({ credentials: true, origin: "http://localhost:3000" }));
 app.use(morgan("dev"));
+
 app.post("/api/v1/auth/signup", authController.signUp);
 app.post("/api/v1/auth/login", authController.login);
 
@@ -30,6 +32,8 @@ app.use(
 app.get("/api/v1/auth/wallet", authController.getAddress);
 app.post("/api/v1/auth/wallet/update", authController.updateAddress);
 app.get("/api/v1/businesses", userController.getUsers);
+app.get("/api/v1/receivable/address", nftController.getReceivableAddress);
+app.post("/api/v1/receivable/new", nftController.createReceivable);
 
 app.all("*", (_, res) => {
   res.send("Invalid route");
