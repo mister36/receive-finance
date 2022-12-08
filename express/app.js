@@ -19,6 +19,8 @@ app.use(morgan("dev"));
 app.post("/api/v1/auth/signup", authController.signUp);
 app.post("/api/v1/auth/login", authController.login);
 
+app.get("/api/v1/receivable/address", nftController.getReceivableAddress);
+
 app.use(cookieParser());
 app.use(authController.verifyUserToken);
 app.use(
@@ -32,7 +34,6 @@ app.use(
 app.get("/api/v1/auth/wallet", authController.getAddress);
 app.post("/api/v1/auth/wallet/update", authController.updateAddress);
 app.get("/api/v1/businesses", userController.getUsers);
-app.get("/api/v1/receivable/address", nftController.getReceivableAddress);
 app.post("/api/v1/receivable/new", nftController.createReceivable);
 
 app.all("*", (_, res) => {

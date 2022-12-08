@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Wallet, Client, AccountSetAsfFlags } from "xrpl";
 import Popup from "reactjs-popup";
 import { TypeAnimation } from "react-type-animation";
@@ -37,6 +37,10 @@ const selectStyles = {
   }),
 };
 
+function convertTwoDecimals(num) {
+  return num.toString().match(/^-?\d+(?:\.\d{0,2})?/)[0];
+}
+
 function BusinessHome() {
   const [wallet, updateWallet, hasWallet, updateWalletStatus] = useAuthStore(
     (state) => [
@@ -47,6 +51,8 @@ function BusinessHome() {
     ]
   );
 
+  const buttonRef = useRef(null);
+
   const [keyPopupOpen, setKeyPopupOpen] = useState(false);
   const [createPopupOpen, setCreatePopupOpen] = useState(false);
   const [mnemonic, setMnemonic] = useState("");
@@ -54,6 +60,7 @@ function BusinessHome() {
   const [amount, setAmount] = useState();
   const [date, setDate] = useState();
   const [business, setBusiness] = useState();
+  const [xrpBalance, setXrpBalance] = useState(0);
 
   const generateWallet = async () => {
     const newMnemonic = generateMnemonic();
@@ -110,14 +117,22 @@ function BusinessHome() {
   };
 
   const createReceivable = async () => {
+    buttonRef.current.classList.add("inactive");
+
+    const unixTimestamp = Math.floor(new Date(date).getTime() / 1000);
     try {
       const response = await axios.post("/api/v1/receivable/new", {
-        business,
+        businessAddress: business,
         amount,
-        date,
+        date: unixTimestamp,
       });
 
       console.log(response.data);
+
+      setCreatePopupOpen(false);
+      setBusiness("");
+      setAmount("");
+      setDate("");
     } catch (error) {
       console.log(error);
     }
@@ -149,6 +164,57 @@ function BusinessHome() {
       getBusinesses();
     }
   }, [createPopupOpen]);
+
+  // gets balance
+  useEffect(() => {
+    const getXrpBalance = async () => {
+      try {
+        const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+        await client.connect();
+
+        const balance =
+          (
+            await client.request({
+              command: "account_info",
+              account: wallet.address,
+              ledger_index: "validated",
+            })
+          ).result.account_data.Balance / 1_000_000;
+
+        setXrpBalance(balance);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    if (wallet) {
+      getXrpBalance();
+    }
+  }, [wallet]);
+
+  // gets incoming Receivables
+  useEffect(() => {
+    const getReceivables = async () => {
+      try {
+        const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+        await client.connect();
+
+        const nfts = (
+          await client.request({
+            command: "account_nfts",
+            account: "rQaPZAAmNbUsY3mznrzgVSSrUezWGse12T",
+            // account: wallet.address,
+            //   ledger_index: "validated",
+          })
+        ).result.account_nfts;
+
+        console.log(nfts);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    getReceivables();
+  }, []);
 
   return (
     <div className="business-container">
@@ -260,7 +326,7 @@ function BusinessHome() {
                 <div className="sub-header">XRP account balance</div>
                 <div className="info-wrapper">
                   <img src="xrp.png" className="logo" alt="" />
-                  <div className="info">182,052.23</div>
+                  <div className="info">{convertTwoDecimals(xrpBalance)}</div>
                 </div>
               </div>
               <div className="entry">
@@ -344,7 +410,11 @@ function BusinessHome() {
                   />
                 </div>
                 <div className="row">
-                  <div className="button" onClick={createReceivable}>
+                  <div
+                    className="button"
+                    onClick={createReceivable}
+                    ref={buttonRef}
+                  >
                     Create
                   </div>
                 </div>

@@ -314,7 +314,13 @@
   background-color: #fff;
   width: 200px;
   margin: 0 auto;
+  opacity: 1;
   cursor: pointer;
+}
+
+.receivable-modal .row .button.inactive {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .dropdown-container {

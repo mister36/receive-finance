@@ -49,7 +49,7 @@ exports.login = async (req, res) => {
 
       res.cookie("token", token, { httpOnly: true });
 
-      res.json({ token, hasWallet: business.hasWallet });
+      res.json({ token });
     } else {
       res.send("no account found");
     }
