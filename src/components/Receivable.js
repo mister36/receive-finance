@@ -1,10 +1,16 @@
 function Receivable({ type = "", name = "", date = "", amount }) {
+  const usdFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
   return (
     <div className="receivable-component">
-      <div id="name">{name}</div>
+      <div className="left">
+        <div id="name">{name}</div>
+        <div id="amount">{usdFormatter.format(amount)}</div>
+      </div>
 
       <div id="date">{date}</div>
-      <div id="amount">{amount}</div>
 
       <div
         id="button"

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Wallet, Client, AccountSetAsfFlags } from "xrpl";
+import { Wallet, Client, AccountSetAsfFlags, convertHexToString } from "xrpl";
 import Popup from "reactjs-popup";
 import { TypeAnimation } from "react-type-animation";
 import axios from "axios";
@@ -10,7 +10,7 @@ import Receivable from "../components/Receivable";
 import "reactjs-popup/dist/index.css";
 import "../App.css";
 
-axios.defaults.withCredentials = true;
+// axios.defaults.withCredentials = true;
 
 const selectStyles = {
   control: (baseStyles, state) => ({
@@ -61,6 +61,8 @@ function BusinessHome() {
   const [date, setDate] = useState();
   const [business, setBusiness] = useState();
   const [xrpBalance, setXrpBalance] = useState(0);
+  const [poolBalance, setPoolBalance] = useState(0);
+  const [inReceivables, setInReceivables] = useState([]);
 
   const generateWallet = async () => {
     const newMnemonic = generateMnemonic();
@@ -121,6 +123,23 @@ function BusinessHome() {
 
     const unixTimestamp = Math.floor(new Date(date).getTime() / 1000);
     try {
+      const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+      await client.connect();
+
+      // sends check to receive pool
+      const poolAddress = (await axios.get("/api/v1/receivable/pool")).data
+        .address;
+      const txBlob = {
+        TransactionType: "CheckCreate",
+        Account: wallet.classicAddress,
+        Destination: poolAddress,
+        SendMax: amount,
+      };
+      const tx = await client.submitAndWait(txBlob, { wallet });
+      console.log("result;", tx.result);
+      console.log(tx.result.meta.TransactionResult);
+
+      // creates receivable
       const response = await axios.post("/api/v1/receivable/new", {
         businessAddress: business,
         amount,
@@ -192,6 +211,33 @@ function BusinessHome() {
     }
   }, [wallet]);
 
+  // gets pool size
+  useEffect(() => {
+    const getPoolBalance = async () => {
+      try {
+        const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+        await client.connect();
+
+        const poolAddress = (await axios.get("/api/v1/receivable/pool")).data
+          .address;
+
+        const balance =
+          (
+            await client.request({
+              command: "account_info",
+              account: poolAddress,
+              ledger_index: "validated",
+            })
+          ).result.account_data.Balance / 1_000_000;
+
+        setPoolBalance(balance);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    getPoolBalance();
+  }, []);
+
   // gets incoming Receivables
   useEffect(() => {
     const getReceivables = async () => {
@@ -199,22 +245,70 @@ function BusinessHome() {
         const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
         await client.connect();
 
+        let response = await axios.get("/api/v1/receivable/sellOffers");
+        console.log(response.data);
+        const sellOffers = response.data.sellOffers;
+
+        if (sellOffers.length) {
+          // accepts sell offers
+          await Promise.all(
+            sellOffers.map(async (offer) => {
+              try {
+                const txBlob = {
+                  TransactionType: "NFTokenAcceptOffer",
+                  Account: wallet.classicAddress,
+                  NFTokenSellOffer: offer,
+                };
+
+                const tx = await client.submitAndWait(txBlob, { wallet });
+                console.log(tx.result);
+                console.log(tx.result.meta.TransactionResult);
+              } catch (error) {
+                console.log(error);
+              }
+            })
+          );
+
+          // deletes sell offers from db
+          response = await axios.delete("/api/v1/receivable/sellOffers");
+          console.log(response.data);
+        }
+
         const nfts = (
           await client.request({
             command: "account_nfts",
-            account: "rQaPZAAmNbUsY3mznrzgVSSrUezWGse12T",
-            // account: wallet.address,
-            //   ledger_index: "validated",
+            account: wallet.classicAddress,
+            ledger_index: "validated",
           })
         ).result.account_nfts;
 
-        console.log(nfts);
+        console.log("receivable nfts:", nfts);
+
+        setInReceivables([]);
+
+        await Promise.all(
+          nfts.map(async (nft) => {
+            const cid = convertHexToString(nft.URI);
+            try {
+              const metadata = (await axios.get(`https://ipfs.io/ipfs/${cid}`))
+                .data;
+              console.log(metadata);
+
+              setInReceivables((current) => [...current, metadata]);
+            } catch (error) {
+              console.log(error);
+            }
+          })
+        );
       } catch (error) {
         console.log(error);
       }
     };
-    getReceivables();
-  }, []);
+
+    if (wallet) {
+      getReceivables();
+    }
+  }, [wallet]);
 
   return (
     <div className="business-container">
@@ -284,7 +378,18 @@ function BusinessHome() {
 
                 <div className="receivables-box">
                   <div className="receivables-wrapper">
-                    <Receivable
+                    {inReceivables.map((nft) => {
+                      return (
+                        <Receivable
+                          type="in"
+                          name={nft.debtor}
+                          date={new Date(nft.due * 1000).toLocaleDateString()}
+                          amount={nft.amount}
+                          key={Math.random()}
+                        />
+                      );
+                    })}
+                    {/* <Receivable
                       type="in"
                       name="Microsoft"
                       date="01/03/23"
@@ -313,7 +418,7 @@ function BusinessHome() {
                       name="Microsoft"
                       date="01/03/23"
                       amount="$1,085.32"
-                    />
+                    /> */}
                   </div>
                 </div>
               </div>
@@ -351,7 +456,7 @@ function BusinessHome() {
                 <div className="sub-header">Pool size</div>
                 <div className="info-wrapper">
                   <img src="xrp.png" className="logo" alt="" />
-                  <div className="info">15,023,123.23</div>
+                  <div className="info">{poolBalance}</div>
                 </div>
               </div>
               <div className="button" onClick={() => setCreatePopupOpen(true)}>

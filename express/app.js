@@ -20,6 +20,7 @@ app.post("/api/v1/auth/signup", authController.signUp);
 app.post("/api/v1/auth/login", authController.login);
 
 app.get("/api/v1/receivable/address", nftController.getReceivableAddress);
+app.get("/api/v1/receivable/pool", nftController.getPoolAddress);
 
 app.use(cookieParser());
 app.use(authController.verifyUserToken);
@@ -35,6 +36,8 @@ app.get("/api/v1/auth/wallet", authController.getAddress);
 app.post("/api/v1/auth/wallet/update", authController.updateAddress);
 app.get("/api/v1/businesses", userController.getUsers);
 app.post("/api/v1/receivable/new", nftController.createReceivable);
+app.get("/api/v1/receivable/sellOffers", nftController.getSellOffers);
+app.delete("/api/v1/receivable/sellOffers", nftController.deleteSellOffers);
 
 app.all("*", (_, res) => {
   res.send("Invalid route");

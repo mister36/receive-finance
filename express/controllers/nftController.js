@@ -1,7 +1,5 @@
 const xrpl = require("xrpl");
 const IPFS = require("ipfs-http-client");
-const ellipticcurve = require("starkbank-ecdsa");
-const Ecdsa = ellipticcurve.Ecdsa;
 const main = require("../app");
 
 exports.createReceivable = async (req, res) => {
@@ -27,14 +25,6 @@ exports.createReceivable = async (req, res) => {
       });
     }
 
-    // const privateKey = ellipticcurve.PrivateKey.fromString(wallet.privateKey);
-    // const publicKey = privateKey.publicKey();
-
-    // const signature = Ecdsa.sign(
-    //   JSON.stringify(recipient.xrpAddress),
-    //   privateKey
-    // );
-
     const metadata = JSON.stringify({
       creditor: recipient.business,
       debtor: sender.business,
@@ -43,7 +33,6 @@ exports.createReceivable = async (req, res) => {
       amount,
       type: "unsold",
       due: date,
-      //   signature, // proves that business didn't mint nft themselves
     });
 
     const { INFURA_PROJECT_ID, INFURA_SECRET } = process.env;
@@ -108,9 +97,17 @@ exports.createReceivable = async (req, res) => {
             const tx = await client.submitAndWait(txBlob, { wallet });
             console.log(tx.result);
 
+            // retrieves offer index
+            const sellOfferIndex = (
+              await client.request({
+                method: "nft_sell_offers",
+                nft_id: nft.NFTokenID,
+              })
+            ).result.offers[0]["nft_offer_index"];
+
             await main.client.db().collection("sellOffers").insertOne({
               business: recipient.xrpAddress,
-              tokenId: nft.NFTokenID,
+              offer: sellOfferIndex,
             });
           }
         }
@@ -118,6 +115,54 @@ exports.createReceivable = async (req, res) => {
     );
   } catch (error) {
     console.log(error);
+  }
+};
+
+exports.getSellOffers = async (req, res) => {
+  const user = req.user;
+  const db = main.client.db();
+
+  try {
+    const business = await db
+      .collection("businesses")
+      .findOne({ email: user.email });
+
+    const sellOffers = await db
+      .collection("sellOffers")
+      .find({ business: business.xrpAddress })
+      .map((doc) => doc.offer)
+      .toArray();
+
+    res.status(200).json({
+      sellOffers,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      error,
+    });
+  }
+};
+
+exports.deleteSellOffers = async (req, res) => {
+  const user = req.user;
+  const db = main.client.db();
+
+  try {
+    const business = await db
+      .collection("businesses")
+      .findOne({ email: user.email });
+
+    await db
+      .collection("sellOffers")
+      .deleteMany({ business: business.xrpAddress });
+
+    res.status(200).json("Deleted sell offers");
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      error,
+    });
   }
 };
 
@@ -155,5 +200,25 @@ exports.getReceivableAddress = async (req, res) => {
         error,
       });
     }
+  }
+};
+
+exports.getPoolAddress = async (_, res) => {
+  const wallet = xrpl.Wallet.fromMnemonic(process.env.POOL_MNEMONIC);
+
+  try {
+    const client = new xrpl.Client("wss://xls20-sandbox.rippletest.net:51233");
+    await client.connect();
+
+    // await client.fundWallet(wallet, {
+    //   faucetHost: null,
+    //   amount: "15000",
+    // });
+
+    res.status(200).json({
+      address: wallet.classicAddress,
+    });
+  } catch (error) {
+    console.log(error);
   }
 };
