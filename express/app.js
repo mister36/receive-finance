@@ -32,6 +32,7 @@ app.use(
   })
 );
 
+app.get("/api/v1/auth/name", authController.getBusinessName);
 app.get("/api/v1/auth/wallet", authController.getAddress);
 app.post("/api/v1/auth/wallet/update", authController.updateAddress);
 app.get("/api/v1/businesses", userController.getUsers);

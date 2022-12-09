@@ -12,6 +12,11 @@ import "../App.css";
 
 // axios.defaults.withCredentials = true;
 
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
 const selectStyles = {
   control: (baseStyles, state) => ({
     ...baseStyles,
@@ -42,14 +47,21 @@ function convertTwoDecimals(num) {
 }
 
 function BusinessHome() {
-  const [wallet, updateWallet, hasWallet, updateWalletStatus] = useAuthStore(
-    (state) => [
-      state.wallet,
-      state.updateWallet,
-      state.hasWallet,
-      state.updateWalletStatus,
-    ]
-  );
+  const [
+    wallet,
+    updateWallet,
+    hasWallet,
+    updateWalletStatus,
+    businessName,
+    updateBusinessName,
+  ] = useAuthStore((state) => [
+    state.wallet,
+    state.updateWallet,
+    state.hasWallet,
+    state.updateWalletStatus,
+    state.businessName,
+    state.updateBusinessName,
+  ]);
 
   const buttonRef = useRef(null);
 
@@ -63,6 +75,10 @@ function BusinessHome() {
   const [xrpBalance, setXrpBalance] = useState(0);
   const [poolBalance, setPoolBalance] = useState(0);
   const [inReceivables, setInReceivables] = useState([]);
+  const [checks, setChecks] = useState([]);
+  const [amountOwed, setAmountOwed] = useState(0);
+  const [amountDue, setAmountDue] = useState(0);
+  const [net, setNet] = useState(0);
 
   const generateWallet = async () => {
     const newMnemonic = generateMnemonic();
@@ -133,7 +149,8 @@ function BusinessHome() {
         TransactionType: "CheckCreate",
         Account: wallet.classicAddress,
         Destination: poolAddress,
-        SendMax: amount,
+        SendMax: Math.round(parseInt(amount, 10) * 2.54).toString(10), // accounts for exchange rate. 1 usd ≈ 2.54 xrp
+        DestinationTag: unixTimestamp,
       };
       const tx = await client.submitAndWait(txBlob, { wallet });
       console.log("result;", tx.result);
@@ -156,6 +173,19 @@ function BusinessHome() {
       console.log(error);
     }
   };
+
+  // gets user's business name
+  useEffect(() => {
+    const getName = async () => {
+      try {
+        const name = (await axios.get("/api/v1/auth/name")).data.name;
+        updateBusinessName(name);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    getName();
+  }, []);
 
   useEffect(() => {
     const checkWalletStatus = async () => {
@@ -285,6 +315,7 @@ function BusinessHome() {
         console.log("receivable nfts:", nfts);
 
         setInReceivables([]);
+        setAmountOwed(0);
 
         await Promise.all(
           nfts.map(async (nft) => {
@@ -295,6 +326,7 @@ function BusinessHome() {
               console.log(metadata);
 
               setInReceivables((current) => [...current, metadata]);
+              setAmountOwed((current) => current + metadata.amount);
             } catch (error) {
               console.log(error);
             }
@@ -310,9 +342,49 @@ function BusinessHome() {
     }
   }, [wallet]);
 
+  // gets sent receivables (xrpl check)
+  useEffect(() => {
+    const getChecks = async () => {
+      const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+      await client.connect();
+
+      const response = await client.request({
+        command: "account_objects",
+        account: wallet.classicAddress,
+        ledger_index: "validated",
+        type: "check",
+      });
+
+      const respChecks = response.result.account_objects;
+      console.log("checks:", respChecks);
+
+      setChecks([]);
+      setAmountDue(0);
+
+      respChecks.forEach((checkObj) => {
+        setChecks((current) => [
+          ...current,
+          { amount: checkObj.SendMax, due: checkObj.DestinationTag },
+        ]);
+
+        setAmountDue(
+          (current) => current + parseInt(checkObj.SendMax, 10) / 2.54
+        );
+      });
+    };
+
+    if (wallet) {
+      getChecks();
+    }
+  }, [wallet]);
+
+  useEffect(() => {
+    setNet(amountOwed - amountDue);
+  }, [amountOwed, amountDue]);
+
   return (
     <div className="business-container">
-      <div className="header">Dashboard</div>
+      <div className="header">Dashboard - {businessName}</div>
 
       {hasWallet && wallet && !keyPopupOpen ? (
         <div className="dashboard">
@@ -325,48 +397,16 @@ function BusinessHome() {
 
                 <div className="receivables-box">
                   <div className="receivables-wrapper">
-                    <Receivable
-                      type="out"
-                      name="Texaco Towers"
-                      date="12/23/22"
-                      amount="$36,000"
-                    />
-                    <Receivable
-                      type="out"
-                      name="Texaco Towers"
-                      date="12/23/22"
-                      amount="$36,000"
-                    />
-                    <Receivable
-                      type="out"
-                      name="Texaco Towers"
-                      date="12/23/22"
-                      amount="$36,000"
-                    />
-                    <Receivable
-                      type="out"
-                      name="Texaco Towers"
-                      date="12/23/22"
-                      amount="$36,000"
-                    />
-                    <Receivable
-                      type="out"
-                      name="Texaco Towers"
-                      date="12/23/22"
-                      amount="$36,000"
-                    />
-                    <Receivable
-                      type="out"
-                      name="Texaco Towers"
-                      date="12/23/22"
-                      amount="$36,000"
-                    />
-                    <Receivable
-                      type="out"
-                      name="Texaco Towers"
-                      date="12/23/22"
-                      amount="$36,000"
-                    />
+                    {checks.map((check) => {
+                      return (
+                        <Receivable
+                          type="out"
+                          date={new Date(check.due * 1000)}
+                          amount={parseInt(check.amount, 10) / 2.54}
+                          key={Math.random()}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -389,36 +429,6 @@ function BusinessHome() {
                         />
                       );
                     })}
-                    {/* <Receivable
-                      type="in"
-                      name="Microsoft"
-                      date="01/03/23"
-                      amount="$1,085.32"
-                    />
-                    <Receivable
-                      type="in"
-                      name="Microsoft"
-                      date="01/03/23"
-                      amount="$1,085.32"
-                    />
-                    <Receivable
-                      type="in"
-                      name="Microsoft"
-                      date="01/03/23"
-                      amount="$1,085.32"
-                    />
-                    <Receivable
-                      type="in"
-                      name="Microsoft"
-                      date="01/03/23"
-                      amount="$1,085.32"
-                    />
-                    <Receivable
-                      type="in"
-                      name="Microsoft"
-                      date="01/03/23"
-                      amount="$1,085.32"
-                    /> */}
                   </div>
                 </div>
               </div>
@@ -437,19 +447,22 @@ function BusinessHome() {
               <div className="entry">
                 <div className="sub-header">Amount owed</div>
                 <div className="info" style={{ color: "#22cd2a" }}>
-                  +$56,232.10
+                  +{usdFormatter.format(amountOwed)}
                 </div>
               </div>
               <div className="entry">
                 <div className="sub-header">Amount due</div>
                 <div className="info" style={{ color: "#f24b4b" }}>
-                  -$25,128.00
+                  -{usdFormatter.format(amountDue)}
                 </div>
               </div>
               <div className="entry">
                 <div className="sub-header">Net</div>
-                <div className="info" style={{ color: "#22cd2a" }}>
-                  $41,104
+                <div
+                  className="info"
+                  style={{ color: net >= 0 ? "#22cd2a" : "#f24b4b" }}
+                >
+                  {usdFormatter.format(net)}
                 </div>
               </div>
               <div className="entry">

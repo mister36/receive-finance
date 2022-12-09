@@ -102,3 +102,25 @@ exports.verifyUserToken = (req, res, next) => {
     res.status(400).send("Invalid token.");
   }
 };
+
+exports.getBusinessName = async (req, res) => {
+  const {
+    user: { email },
+  } = req;
+
+  try {
+    const business = await main.client
+      .db()
+      .collection("businesses")
+      .findOne({ email });
+
+    res.status(200).json({
+      name: business.business,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      error,
+    });
+  }
+};
