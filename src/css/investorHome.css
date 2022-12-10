@@ -1,0 +1,179 @@
+.investor-container {
+  display: flex;
+  flex-direction: column;
+  padding-top: 30px;
+}
+
+.investor-container .investor-contents-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.investor-container .investor-contents-wrapper .data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.investor-container .investor-contents-wrapper .data .header {
+  display: flex;
+  width: 1200px;
+  height: 60px;
+  border-radius: 10px;
+  margin-top: 50px;
+  background: linear-gradient(90deg, #292929, #3e3e3e);
+}
+
+.investor-container .investor-contents-wrapper .data .header .header-box {
+  display: flex;
+  width: 33%;
+  height: 100%;
+  font-size: 30px;
+  align-items: center;
+  justify-content: center;
+  font-family: "HeroNewBold";
+  text-align: center;
+  color: white;
+}
+
+.investor-container .investor-contents-wrapper .data .values {
+  display: flex;
+  width: 1200px;
+  margin-top: 30px;
+}
+
+.investor-container .investor-contents-wrapper .data .values .value-box {
+  display: flex;
+  width: 33%;
+  height: 100%;
+  font-size: 30px;
+  color: white;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.investor-container .investor-contents-wrapper .data .values .value-box img {
+  width: 20px;
+  height: 20px;
+  filter: invert(100%);
+  margin-right: 5px;
+}
+
+.investor-container .investor-contents-wrapper .pool-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: 300px;
+  width: 550px;
+  margin-top: 75px;
+  border-radius: 10px;
+  padding: 30px;
+  box-sizing: border-box;
+  background: linear-gradient(45deg, #202020, #3e3e3e);
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .deposit-container
+  #amount {
+  color: #d6d6d6;
+  font-family: "HeroNewBold";
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .deposit-container
+  .action {
+  align-self: center;
+  width: 85%;
+  display: flex;
+  margin-top: 5px;
+  justify-content: space-between;
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .deposit-container
+  .action
+  input {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  height: 18px;
+  width: 200px;
+  padding: 16px;
+  border-style: none;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .deposit-container
+  .action
+  input:focus {
+  outline-width: 0;
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .deposit-container
+  .action
+  .button {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  width: 200px;
+  height: 30px;
+  border-radius: 10px;
+  text-align: center;
+  padding: 10px;
+  background-color: #1d9e23;
+  color: white;
+  width: 100px;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .deposit-container
+  .action
+  .button.active {
+  opacity: 1;
+  cursor: pointer;
+}
+.investor-container .investor-contents-wrapper .pool-actions .horizontal-line {
+  height: 1px;
+  width: 100%;
+  background-color: #d6d6d6;
+  align-self: center;
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .withdraw-container
+  .button {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  margin: 0 auto;
+  flex-direction: column;
+  height: 30px;
+  border-radius: 10px;
+  text-align: center;
+  padding: 10px 50px;
+  border: 1px solid #f24b4b;
+  color: #f24b4b;
+  width: 100px;
+  cursor: pointer;
+}

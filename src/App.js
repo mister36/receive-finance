@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home.js";
 import Auth from "./pages/Auth.js";
 import BusinessHome from "./pages/BusinessHome.js";
+import InvestorHome from "./pages/InvestorHome";
 
 import Header from "./components/Header";
 
@@ -15,6 +16,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/business" element={<BusinessHome />} />
+        <Route path="/investor" element={<InvestorHome />} />
       </Routes>
     </Router>
   );

@@ -12,7 +12,7 @@
   font-family: "HeroNewSemiBold";
 }
 
-.business-container .action-container {
+.action-container {
   display: flex;
   flex-direction: column;
   align-self: center;
@@ -25,7 +25,7 @@
   border-radius: 30px;
 }
 
-.business-container .action-container .action-header {
+.action-container .action-header {
   color: #fff;
   font-family: "HeroNewRegular";
   font-size: 22px;
@@ -33,7 +33,7 @@
   width: 80%;
 }
 
-.business-container .action-container input {
+.action-container input {
   background-color: rgba(0, 0, 0, 0.3);
   color: white;
   height: 18px;
@@ -44,11 +44,11 @@
   font-size: 16px;
 }
 
-.business-container .action-container input:focus {
+.action-container input:focus {
   outline-width: 0;
 }
 
-.business-container .action-container .button {
+.action-container .button {
   display: flex;
   justify-content: center;
   align-content: center;

@@ -1,7 +1,9 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "../App.css";
 
 function App() {
+  const navigate = useNavigate();
+
   return (
     <div className="App">
       <div className="main-content">
@@ -16,15 +18,17 @@ function App() {
         </div>
 
         <div className="right">
-          <div className="button" id="wallet">
+          <div
+            className="button"
+            id="wallet"
+            onClick={() => navigate("/investor")}
+          >
             Connect wallet
           </div>
 
-          <Link to="/auth">
-            <div className="button" id="signup">
-              Sign up <span id="small">(Required for businesses)</span>
-            </div>
-          </Link>
+          <div className="button" id="signup" onClick={() => navigate("/auth")}>
+            Sign up <span id="small">(Required for businesses)</span>
+          </div>
         </div>
       </div>
     </div>
