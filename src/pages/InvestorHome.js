@@ -1,5 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { Wallet, Client, AccountSetAsfFlags, convertHexToString } from "xrpl";
+import {
+  Wallet,
+  Client,
+  AccountSetAsfFlags,
+  convertHexToString,
+  xrpToDrops,
+} from "xrpl";
 import axios from "axios";
 import { useAuthStore } from "../stores";
 import "../App.css";
@@ -13,6 +19,7 @@ function InvestorHome() {
   const [mnemonic, setMnemonic] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
   const [xrpBalance, setXrpBalance] = useState(0);
+  const [poolAddress, setPoolAddress] = useState("");
   const [poolBalance, setPoolBalance] = useState(0);
 
   const buttonRef = useRef(null);
@@ -22,6 +29,27 @@ function InvestorHome() {
 
     console.log(submittedWallet);
     updateWallet(submittedWallet);
+  };
+
+  const deposit = async () => {
+    try {
+      buttonRef.current.classList.remove("active");
+      const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+      await client.connect();
+
+      const txBlob = {
+        TransactionType: "Payment",
+        Account: wallet.classicAddress,
+        Amount: xrpToDrops(depositAmount),
+        Destination: poolAddress,
+      };
+
+      const response = await client.submitAndWait(txBlob, { wallet });
+      console.log(response.result.meta.TransactionResult);
+      setDepositAmount(0);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   // gets balance
@@ -66,19 +94,19 @@ function InvestorHome() {
         const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
         await client.connect();
 
-        const poolAddress = (await axios.get("/api/v1/receivable/pool")).data
-          .address;
+        const pool = (await axios.get("/api/v1/receivable/pool")).data.address;
 
         const balance =
           (
             await client.request({
               command: "account_info",
-              account: poolAddress,
+              account: pool,
               ledger_index: "validated",
             })
           ).result.account_data.Balance / 1_000_000;
 
         setPoolBalance(balance);
+        setPoolAddress(pool);
       } catch (error) {
         console.log(error);
       }
@@ -87,7 +115,7 @@ function InvestorHome() {
   }, []);
 
   useEffect(() => {
-    if (depositAmount) {
+    if (depositAmount >= 0 && buttonRef.current) {
       buttonRef.current.classList.add("active");
     } else if (buttonRef.current) {
       buttonRef.current.classList.remove("active");
@@ -142,7 +170,7 @@ function InvestorHome() {
                   onChange={(e) => setDepositAmount(e.target.value)}
                   placeholder="34502.10"
                 />
-                <div className="button" ref={buttonRef}>
+                <div className="button" ref={buttonRef} onClick={deposit}>
                   Deposit
                 </div>
               </div>

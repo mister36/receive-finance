@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Wallet, Client, AccountSetAsfFlags, convertHexToString } from "xrpl";
+import {
+  Wallet,
+  Client,
+  AccountSetAsfFlags,
+  convertHexToString,
+  dropsToXrp,
+  xrpToDrops,
+} from "xrpl";
 import Popup from "reactjs-popup";
 import { TypeAnimation } from "react-type-animation";
 import axios from "axios";
@@ -10,12 +17,17 @@ import Receivable from "../components/Receivable";
 import "reactjs-popup/dist/index.css";
 import "../App.css";
 
-// axios.defaults.withCredentials = true;
+axios.defaults.withCredentials = true;
+
+const RECEIVABLE_FEE = 0.02;
 
 const usdFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
+
+const usdToXrp = (usd) => usd * 2.54;
+const xrpToUsd = (xrp) => xrp / 2.54;
 
 const selectStyles = {
   control: (baseStyles, state) => ({
@@ -61,6 +73,7 @@ function BusinessHome() {
     state.updateWalletStatus,
     state.businessName,
     state.updateBusinessName,
+    state.jwtToken,
   ]);
 
   const buttonRef = useRef(null);
@@ -69,8 +82,8 @@ function BusinessHome() {
   const [createPopupOpen, setCreatePopupOpen] = useState(false);
   const [mnemonic, setMnemonic] = useState("");
   const [businessDropdownData, setBusinessDropdownData] = useState([]);
-  const [amount, setAmount] = useState();
-  const [date, setDate] = useState();
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState("");
   const [business, setBusiness] = useState();
   const [xrpBalance, setXrpBalance] = useState(0);
   const [poolBalance, setPoolBalance] = useState(0);
@@ -149,7 +162,9 @@ function BusinessHome() {
         TransactionType: "CheckCreate",
         Account: wallet.classicAddress,
         Destination: poolAddress,
-        SendMax: Math.round(parseInt(amount, 10) * 2.54).toString(10), // accounts for exchange rate. 1 usd ≈ 2.54 xrp
+        SendMax: xrpToDrops(
+          usdToXrp(Math.round(parseFloat(amount, 10))).toString(10)
+        ),
         DestinationTag: unixTimestamp,
       };
       const tx = await client.submitAndWait(txBlob, { wallet });
@@ -159,7 +174,7 @@ function BusinessHome() {
       // creates receivable
       const response = await axios.post("/api/v1/receivable/new", {
         businessAddress: business,
-        amount,
+        amount: xrpToDrops(usdToXrp(amount)),
         date: unixTimestamp,
       });
 
@@ -169,6 +184,29 @@ function BusinessHome() {
       setBusiness("");
       setAmount("");
       setDate("");
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const createSellOffer = async (NFTokenID, Amount) => {
+    try {
+      const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+      await client.connect();
+
+      const pool = (await axios.get("/api/v1/receivable/pool")).data.address;
+
+      const txBlob = {
+        TransactionType: "NFTokenCreateOffer",
+        Account: wallet.classicAddress,
+        NFTokenID,
+        Amount: (Amount * (1 - RECEIVABLE_FEE)).toString(10),
+        Destination: pool,
+        Flags: 1,
+      };
+
+      const tx = await client.submitAndWait(txBlob, { wallet });
+      console.log(tx.result.meta.TransactionResult);
     } catch (error) {
       console.log(error);
     }
@@ -221,14 +259,15 @@ function BusinessHome() {
         const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
         await client.connect();
 
-        const balance =
+        const balance = dropsToXrp(
           (
             await client.request({
               command: "account_info",
               account: wallet.address,
               ledger_index: "validated",
             })
-          ).result.account_data.Balance / 1_000_000;
+          ).result.account_data.Balance
+        );
 
         setXrpBalance(balance);
       } catch (error) {
@@ -251,14 +290,15 @@ function BusinessHome() {
         const poolAddress = (await axios.get("/api/v1/receivable/pool")).data
           .address;
 
-        const balance =
+        const balance = dropsToXrp(
           (
             await client.request({
               command: "account_info",
               account: poolAddress,
               ledger_index: "validated",
             })
-          ).result.account_data.Balance / 1_000_000;
+          ).result.account_data.Balance
+        );
 
         setPoolBalance(balance);
       } catch (error) {
@@ -299,7 +339,7 @@ function BusinessHome() {
             })
           );
 
-          // deletes sell offers from db
+          // deletes sell offers from dbd
           response = await axios.delete("/api/v1/receivable/sellOffers");
           console.log(response.data);
         }
@@ -321,12 +361,21 @@ function BusinessHome() {
           nfts.map(async (nft) => {
             const cid = convertHexToString(nft.URI);
             try {
-              const metadata = (await axios.get(`https://ipfs.io/ipfs/${cid}`))
-                .data;
+              const metadata = (
+                await axios.get(`https://ipfs.io/ipfs/${cid}`, {
+                  withCredentials: false,
+                })
+              ).data;
               console.log(metadata);
 
-              setInReceivables((current) => [...current, metadata]);
-              setAmountOwed((current) => current + metadata.amount);
+              setInReceivables((current) => [
+                ...current,
+                { ...metadata, id: nft.NFTokenID },
+              ]);
+              setAmountOwed(
+                (current) => current + parseFloat(dropsToXrp(metadata.amount)),
+                10
+              );
             } catch (error) {
               console.log(error);
             }
@@ -368,7 +417,8 @@ function BusinessHome() {
         ]);
 
         setAmountDue(
-          (current) => current + parseInt(checkObj.SendMax, 10) / 2.54
+          (current) =>
+            current + xrpToUsd(parseFloat(dropsToXrp(checkObj.SendMax, 10)))
         );
       });
     };
@@ -402,7 +452,9 @@ function BusinessHome() {
                         <Receivable
                           type="out"
                           date={new Date(check.due * 1000)}
-                          amount={parseInt(check.amount, 10) / 2.54}
+                          amount={xrpToUsd(
+                            dropsToXrp(parseFloat(check.amount, 10))
+                          )}
                           key={Math.random()}
                         />
                       );
@@ -424,8 +476,11 @@ function BusinessHome() {
                           type="in"
                           name={nft.debtor}
                           date={new Date(nft.due * 1000).toLocaleDateString()}
-                          amount={nft.amount}
+                          amount={xrpToUsd(dropsToXrp(nft.amount))}
                           key={Math.random()}
+                          createSellOffer={() =>
+                            createSellOffer(nft.id, nft.amount)
+                          }
                         />
                       );
                     })}

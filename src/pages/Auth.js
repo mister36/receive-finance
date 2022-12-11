@@ -7,7 +7,8 @@ import "../App.css";
 function App() {
   const navigate = useNavigate();
 
-  const [updateWalletStatus] = useAuthStore((state) => [
+  const [updateJwtToken, updateWalletStatus] = useAuthStore((state) => [
+    state.updateJwtToken,
     state.updateWalletStatus,
   ]);
 
@@ -48,6 +49,8 @@ function App() {
       console.log(response);
 
       if (response.status === 200) {
+        updateJwtToken(response.data.token);
+        document.cookie = response.data.token;
         navigate("/business");
       }
     } catch (error) {
@@ -74,6 +77,8 @@ function App() {
       }
 
       if (response.data.token && response.data.token.length) {
+        updateJwtToken(response.data.token);
+        document.cookie = response.data.token;
         navigate("/business");
       }
     } catch (error) {

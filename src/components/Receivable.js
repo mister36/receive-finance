@@ -1,4 +1,10 @@
-function Receivable({ type = "", name = "", date = "", amount }) {
+function Receivable({
+  type = "",
+  name = "",
+  date = "",
+  amount,
+  createSellOffer,
+}) {
   const usdFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -37,6 +43,7 @@ function Receivable({ type = "", name = "", date = "", amount }) {
           <div
             id="button"
             style={{ background: type === "out" ? "#F0B700" : "#1d9e23" }}
+            onClick={createSellOffer}
           >
             {type === "out" ? "PAY" : "SELL"}
           </div>
