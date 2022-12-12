@@ -1,5 +1,6 @@
 const xrpl = require("xrpl");
 const IPFS = require("ipfs-http-client");
+const { BigNumber } = require("bignumber.js");
 const main = require("../app");
 
 exports.createReceivable = async (req, res) => {
@@ -144,6 +145,28 @@ exports.getSellOffers = async (req, res) => {
   }
 };
 
+exports.getInvestorOffers = async (req, res) => {
+  const { investor } = req.body;
+  const db = main.client.db();
+
+  try {
+    const offers = await db
+      .collection("investorOffers")
+      .find({ investor })
+      .map((doc) => doc.offer)
+      .toArray();
+
+    res.status(200).json({
+      offers,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      error,
+    });
+  }
+};
+
 exports.deleteSellOffers = async (req, res) => {
   const user = req.user;
   const db = main.client.db();
@@ -163,6 +186,19 @@ exports.deleteSellOffers = async (req, res) => {
     res.status(400).json({
       error,
     });
+  }
+};
+
+exports.deleteInvestorOffers = async (req, res) => {
+  const { investor } = req.body;
+  const db = main.client.db();
+
+  try {
+    await db.collection("investorOffers").deleteMany({ investor });
+
+    res.status(200).json("Deleted investor offers");
+  } catch (error) {
+    console.log(error);
   }
 };
 
@@ -212,7 +248,7 @@ exports.getPoolAddress = async (_, res) => {
 
     // await client.fundWallet(wallet, {
     //   faucetHost: null,
-    //   amount: "15000",
+    //   amount: "50000",
     // });
 
     res.status(200).json({
@@ -220,5 +256,39 @@ exports.getPoolAddress = async (_, res) => {
     });
   } catch (error) {
     console.log(error);
+  }
+};
+
+exports.test = async (req, res) => {
+  try {
+    const client = new xrpl.Client("wss://xls20-sandbox.rippletest.net:51233");
+    await client.connect();
+
+    const poolWallet = xrpl.Wallet.fromMnemonic(process.env.POOL_MNEMONIC);
+
+    const checks = (
+      await client.request({
+        command: "account_objects",
+        account: poolWallet.classicAddress,
+        ledger_index: "validated",
+        type: "check",
+      })
+    ).result.account_objects.filter(
+      (check) => check.Destination === poolWallet.classicAddress
+    );
+
+    let totalChecksValue = 0;
+
+    checks.forEach((check) => {
+      totalChecksValue += parseFloat(check.SendMax, 10);
+    });
+
+    console.log(checks);
+    console.log(totalChecksValue);
+
+    res.status(200).json({});
+  } catch (error) {
+    console.log(error);
+    res.status(400);
   }
 };

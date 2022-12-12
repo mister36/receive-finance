@@ -35,10 +35,17 @@ app.use(function (req, res, next) {
 app.post("/api/v1/auth/signup", authController.signUp);
 app.post("/api/v1/auth/login", authController.login);
 
+app.post("/api/v1/ipfs", userController.getIpfsData);
+
 app.get("/api/v1/receivable/address", nftController.getReceivableAddress);
 app.get("/api/v1/receivable/pool", nftController.getPoolAddress);
 
 app.post("/api/v1/pool/deposit", poolController.deposit);
+app.post("/api/v1/investors/deposit", userController.getInvestorDeposit);
+app.post("/api/v1/investors/offers", nftController.getInvestorOffers);
+app.post("/api/v1/investors/offers/remove", nftController.deleteInvestorOffers);
+
+app.get("/api/v1/test", nftController.test);
 
 app.use(cookieParser());
 app.use(authController.verifyUserToken);
@@ -117,13 +124,16 @@ const handleIncomingPayment = async (investor, amount) => {
 };
 
 const handleSellOffer = async (NFTokenID, seller, offerAmount) => {
+  const investorOffers = client.db().collection("investorOffers");
   try {
-    const client = new xrpl.Client("wss://xls20-sandbox.rippletest.net:51233");
-    await client.connect();
+    const xrpClient = new xrpl.Client(
+      "wss://xls20-sandbox.rippletest.net:51233"
+    );
+    await xrpClient.connect();
 
     // used to retrieve nft uri + metadata
     const nfts = (
-      await client.request({
+      await xrpClient.request({
         method: "account_nfts",
         account: seller,
         ledger_index: "validated",
@@ -133,15 +143,24 @@ const handleSellOffer = async (NFTokenID, seller, offerAmount) => {
     const cid = xrpl.convertHexToString(nfts[0].URI);
 
     const metadata = (
-      await axios.get(`https://ipfs.io/ipfs/${cid}`, {
+      await axios.get(`https://gateway.pinata.cloud/ipfs/${cid}`, {
         withCredentials: false,
       })
     ).data;
 
+    // pool balance before pool pays debtor
+    const poolBalance = (
+      await xrpClient.request({
+        command: "account_info",
+        account: poolWallet.classicAddress,
+        ledger_index: "validated",
+      })
+    ).result.account_data.Balance;
+
     // accepts offer: pool gets nft and burns, seller/debtor gets funds
     if (metadata.amount * (1 - RECEIVABLE_FEE) <= offerAmount) {
       const offer = (
-        await client.request({
+        await xrpClient.request({
           method: "nft_sell_offers",
           nft_id: NFTokenID,
         })
@@ -153,7 +172,7 @@ const handleSellOffer = async (NFTokenID, seller, offerAmount) => {
         NFTokenSellOffer: offer.nft_offer_index,
       };
 
-      let tx = await client.submitAndWait(txBlob, { wallet: poolWallet });
+      let tx = await xrpClient.submitAndWait(txBlob, { wallet: poolWallet });
       console.log(tx.result.meta.TransactionResult);
 
       // burns token
@@ -164,15 +183,170 @@ const handleSellOffer = async (NFTokenID, seller, offerAmount) => {
         NFTokenID,
       };
 
-      tx = await client.submitAndWait(txBlob, { wallet: poolWallet });
+      tx = await xrpClient.submitAndWait(txBlob, { wallet: poolWallet });
       console.log(tx.result.meta.TransactionResult);
 
-      // TODO: mint token to every investor
+      // total value of checks for pool
+      const checks = (
+        await xrpClient.request({
+          command: "account_objects",
+          account: poolWallet.classicAddress,
+          ledger_index: "validated",
+          type: "check",
+        })
+      ).result.account_objects.filter(
+        (check) => check.Destination === poolWallet.classicAddress
+      );
+
+      let totalChecksValue = 0;
+
+      checks.forEach((check) => {
+        totalChecksValue += parseFloat(check.SendMax, 10);
+      });
+
+      // SECTION: mint token to every investor
+      const investorCollection = client.db().collection("investors");
+      const investorsCursor = investorCollection.find({});
+
+      const sequence = (
+        await xrpClient.request({
+          command: "account_info",
+          account: poolWallet.classicAddress,
+        })
+      ).result.account_data.Sequence;
+
+      const ticketTransaction = await xrpClient.autofill({
+        TransactionType: "TicketCreate",
+        Account: poolWallet.classicAddress,
+        TicketCount: await investorCollection.countDocuments(),
+        Sequence: sequence,
+      });
+
+      tx = await xrpClient.submitAndWait(ticketTransaction, {
+        wallet: poolWallet,
+      });
+      console.log(tx.result.meta.TransactionResult);
+
+      let tickets = (
+        await xrpClient.request({
+          command: "account_objects",
+          account: poolWallet.classicAddress,
+          type: "ticket",
+        })
+      ).result.account_objects.map((ticket) => ticket.TicketSequence);
+
+      await Promise.all(
+        (
+          await investorsCursor.toArray()
+        ).map(async (investor, index) => {
+          // only ones that can be withdrawn at this moment
+          const entitledNfts = (
+            await xrpClient.request({
+              method: "account_nfts",
+              account: investor.investor,
+              ledger_index: "validated",
+            })
+          ).result.account_nfts.filter((nft) => {
+            const date = JSON.parse(xrpl.convertHexToString(nft.URI)).date;
+            return (
+              nft.Issuer === poolWallet.classicAddress &&
+              date < Math.round(Date.now() / 1000)
+            );
+          });
+
+          let totalEntitledNow = 0;
+
+          entitledNfts.forEach((nft) => {
+            totalEntitledNow += parseFloat(
+              JSON.parse(xrpl.convertHexToString(nft.URI)).entitledTo || 0 // TODO: remove. only here for testing
+            );
+          });
+
+          console.log(
+            "variables:",
+            investor.amount,
+            totalEntitledNow,
+            poolBalance,
+            totalChecksValue,
+            offerAmount
+          );
+
+          // formula for ROI
+          const entitledTo =
+            ((investor.amount + totalEntitledNow) /
+              (parseFloat(poolBalance, 10) + totalChecksValue)) *
+            parseFloat(offerAmount, 10) *
+            RECEIVABLE_FEE;
+
+          console.log("ENTITLED TO:", entitledTo);
+
+          const meta = JSON.stringify({
+            entitledTo,
+            date: metadata.due,
+          });
+
+          let txBlob = {
+            TransactionType: "NFTokenMint",
+            Account: poolWallet.address,
+            URI: xrpl.convertStringToHex(meta),
+            NFTokenTaxon: 0,
+            Flags: 1,
+            Sequence: 0,
+            TicketSequence: tickets[index],
+            LastLedgerSequence: null,
+          };
+
+          tx = await xrpClient.submitAndWait(txBlob, {
+            wallet: poolWallet,
+            autofill: true,
+          });
+          console.log(tx.result.meta.TransactionResult);
+
+          const nftForInvestor = (
+            await xrpClient.request({
+              method: "account_nfts",
+              account: poolWallet.classicAddress,
+              ledger_index: "validated",
+            })
+          ).result.account_nfts.filter(
+            (nft) => nft.URI === xrpl.convertStringToHex(meta)
+          )[0];
+
+          // create offer for investor, save offer in db
+          txBlob = {
+            TransactionType: "NFTokenCreateOffer",
+            Account: poolWallet.classicAddress,
+            NFTokenID: nftForInvestor.NFTokenID,
+            Amount: "0",
+            Destination: investor.investor,
+            Flags: 1,
+          };
+
+          tx = await xrpClient.submitAndWait(txBlob, {
+            wallet: poolWallet,
+            autofill: true,
+          });
+          console.log(tx.result.meta.TransactionResult);
+
+          // retrieves offer index
+          const sellOfferIndex = (
+            await xrpClient.request({
+              method: "nft_sell_offers",
+              nft_id: nftForInvestor.NFTokenID,
+            })
+          ).result.offers[0]["nft_offer_index"];
+
+          await investorOffers.insertOne({
+            investor: investor.investor,
+            offer: sellOfferIndex,
+          });
+        })
+      );
     } else {
       console.log("Offer amount too high");
       console.log(
         `Metadata says ${
-          metadata.amount * (100 - RECEIVABLE_FEE)
+          metadata.amount * (1 - RECEIVABLE_FEE)
         }, offer says ${offerAmount}`
       );
     }
@@ -204,7 +378,7 @@ socket.on("message", (data) => {
       ev.transaction.Destination === poolWallet.classicAddress &&
       ev.transaction.TransactionType === "Payment"
     ) {
-      const amount = xrpl.dropsToXrp(ev.transaction.Amount); // db stores xrp, not drops
+      const amount = ev.transaction.Amount;
       const investor = ev.transaction.Account;
 
       handleIncomingPayment(investor, amount);
@@ -215,7 +389,7 @@ socket.on("message", (data) => {
     ) {
       const token = ev.transaction.NFTokenID;
       const seller = ev.transaction.Account;
-      // check whether offer amount is correct
+
       const amount = ev.transaction.Amount;
       handleSellOffer(token, seller, amount);
     }

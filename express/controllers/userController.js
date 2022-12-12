@@ -1,3 +1,4 @@
+const axios = require("axios");
 const main = require("../app");
 
 exports.getUsers = async (req, res) => {
@@ -15,5 +16,41 @@ exports.getUsers = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
+  }
+};
+
+exports.getIpfsData = async (req, res) => {
+  const { cid } = req.body;
+
+  try {
+    const metadata = (
+      await axios.get(`https://gateway.pinata.cloud/ipfs/${cid}`)
+    ).data;
+
+    return res.status(200).json(metadata);
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      error,
+    });
+  }
+};
+
+exports.getInvestorDeposit = async (req, res) => {
+  const { investor } = req.body;
+
+  try {
+    const amount = (
+      await main.client.db().collection("investors").findOne({ investor })
+    ).amount;
+
+    res.status(200).json({
+      amount,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      error,
+    });
   }
 };

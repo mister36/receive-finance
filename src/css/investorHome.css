@@ -27,9 +27,9 @@
 
 .investor-container .investor-contents-wrapper .data .header .header-box {
   display: flex;
-  width: 33%;
+  width: 25%;
   height: 100%;
-  font-size: 30px;
+  font-size: 20px;
   align-items: center;
   justify-content: center;
   font-family: "HeroNewBold";
@@ -45,9 +45,9 @@
 
 .investor-container .investor-contents-wrapper .data .values .value-box {
   display: flex;
-  width: 33%;
+  width: 25%;
   height: 100%;
-  font-size: 30px;
+  font-size: 25px;
   color: white;
   align-items: center;
   justify-content: center;

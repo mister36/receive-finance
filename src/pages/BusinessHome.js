@@ -60,14 +60,14 @@ function convertTwoDecimals(num) {
 
 function BusinessHome() {
   const [
-    wallet,
+    mnemonic,
     updateWallet,
     hasWallet,
     updateWalletStatus,
     businessName,
     updateBusinessName,
   ] = useAuthStore((state) => [
-    state.wallet,
+    state.mnemonic,
     state.updateWallet,
     state.hasWallet,
     state.updateWalletStatus,
@@ -80,7 +80,8 @@ function BusinessHome() {
 
   const [keyPopupOpen, setKeyPopupOpen] = useState(false);
   const [createPopupOpen, setCreatePopupOpen] = useState(false);
-  const [mnemonic, setMnemonic] = useState("");
+  const [wallet, setWallet] = useState("");
+  const [mnemonicInput, setMnemonicInput] = useState("");
   const [businessDropdownData, setBusinessDropdownData] = useState([]);
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
@@ -92,46 +93,30 @@ function BusinessHome() {
   const [amountOwed, setAmountOwed] = useState(0);
   const [amountDue, setAmountDue] = useState(0);
   const [net, setNet] = useState(0);
+  const [reload, setReload] = useState(0);
 
   const generateWallet = async () => {
     const newMnemonic = generateMnemonic();
     const newWallet = Wallet.fromMnemonic(newMnemonic);
-    updateWallet(newWallet);
-    setMnemonic(newMnemonic);
+    updateWallet(newMnemonic);
+    setWallet(newWallet);
 
     try {
       const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
       await client.connect();
 
-      let response = await axios.get("/api/v1/receivable/address");
-      const receivableAddress = response.data.address;
-
-      await client.fundWallet(newWallet, {
+      let response = await client.fundWallet(newWallet, {
         faucetHost: null,
         amount: "30000",
       });
 
-      const txJson = {
-        TransactionType: "AccountSet",
-        Account: newWallet.address,
-        NFTokenMinter: receivableAddress,
-        SetFlag: AccountSetAsfFlags.asfAuthorizedNFTokenMinter,
-      };
+      console.log(response);
 
       response = await axios.post("/api/v1/auth/wallet/update", {
         address: newWallet.classicAddress,
       });
 
-      const prepared = await client.autofill(txJson);
-      const signed = newWallet.sign(prepared);
-      const result = await client.submitAndWait(signed.tx_blob);
-
-      if (result.result.meta.TransactionResult === "tesSUCCESS") {
-        console.log("Set minter");
-        console.log(result);
-      } else {
-        throw new Error(`Error setting minter: ${result}`);
-      }
+      updateWalletStatus();
 
       console.log(response);
       console.log(newWallet);
@@ -141,16 +126,22 @@ function BusinessHome() {
   };
 
   const submitKey = async () => {
-    const submittedWallet = Wallet.fromMnemonic(mnemonic);
-
-    console.log(submittedWallet);
-    updateWallet(submittedWallet);
+    updateWallet(mnemonicInput);
+    setWallet(Wallet.fromMnemonic(mnemonicInput));
   };
 
   const createReceivable = async () => {
     buttonRef.current.classList.add("inactive");
 
-    const unixTimestamp = Math.floor(new Date(date).getTime() / 1000);
+    const dateNum = Math.floor(new Date(date).getTime() / 1000);
+    // const checkMinimumUsageDate = new Date(date);
+    // const dateNum = parseInt(
+    //   `${
+    //     checkMinimumUsageDate.getMonth() + 1
+    //   }${checkMinimumUsageDate.getDate()}${checkMinimumUsageDate.getFullYear()}`,
+    //   10
+    // );
+
     try {
       const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
       await client.connect();
@@ -162,12 +153,14 @@ function BusinessHome() {
         TransactionType: "CheckCreate",
         Account: wallet.classicAddress,
         Destination: poolAddress,
-        SendMax: xrpToDrops(
-          usdToXrp(Math.round(parseFloat(amount, 10))).toString(10)
-        ),
-        DestinationTag: unixTimestamp,
+        SendMax: xrpToDrops(usdToXrp(parseFloat(amount, 10)).toString(10)),
+        SourceTag: dateNum, // when  check will be used
+        LastLedgerSequence: null,
       };
-      const tx = await client.submitAndWait(txBlob, { wallet });
+
+      const tx = await client.submitAndWait(txBlob, {
+        wallet,
+      });
       console.log("result;", tx.result);
       console.log(tx.result.meta.TransactionResult);
 
@@ -175,7 +168,7 @@ function BusinessHome() {
       const response = await axios.post("/api/v1/receivable/new", {
         businessAddress: business,
         amount: xrpToDrops(usdToXrp(amount)),
-        date: unixTimestamp,
+        date: dateNum,
       });
 
       console.log(response.data);
@@ -184,6 +177,7 @@ function BusinessHome() {
       setBusiness("");
       setAmount("");
       setDate("");
+      setReload((current) => current + 1);
     } catch (error) {
       console.log(error);
     }
@@ -203,14 +197,24 @@ function BusinessHome() {
         Amount: (Amount * (1 - RECEIVABLE_FEE)).toString(10),
         Destination: pool,
         Flags: 1,
+        LastLedgerSequence: 10_000_000,
       };
 
       const tx = await client.submitAndWait(txBlob, { wallet });
       console.log(tx.result.meta.TransactionResult);
+      setReload((current) => current + 1);
     } catch (error) {
       console.log(error);
     }
   };
+
+  // sets wallet from mnemonic
+  useEffect(() => {
+    if (mnemonic.split(" ").length === 12) {
+      setWallet(Wallet.fromMnemonic(mnemonic));
+      console.log(wallet);
+    }
+  }, [mnemonic]);
 
   // gets user's business name
   useEffect(() => {
@@ -225,6 +229,7 @@ function BusinessHome() {
     getName();
   }, []);
 
+  // wallet status
   useEffect(() => {
     const checkWalletStatus = async () => {
       try {
@@ -240,6 +245,7 @@ function BusinessHome() {
     checkWalletStatus();
   }, []);
 
+  // gets businesses for dropdown
   useEffect(() => {
     const getBusinesses = async () => {
       const response = await axios.get("/api/v1/businesses");
@@ -263,7 +269,7 @@ function BusinessHome() {
           (
             await client.request({
               command: "account_info",
-              account: wallet.address,
+              account: wallet.classicAddress,
               ledger_index: "validated",
             })
           ).result.account_data.Balance
@@ -278,7 +284,7 @@ function BusinessHome() {
     if (wallet) {
       getXrpBalance();
     }
-  }, [wallet]);
+  }, [wallet, reload]);
 
   // gets pool size
   useEffect(() => {
@@ -306,7 +312,7 @@ function BusinessHome() {
       }
     };
     getPoolBalance();
-  }, []);
+  }, [reload]);
 
   // gets incoming Receivables
   useEffect(() => {
@@ -328,6 +334,7 @@ function BusinessHome() {
                   TransactionType: "NFTokenAcceptOffer",
                   Account: wallet.classicAddress,
                   NFTokenSellOffer: offer,
+                  LastLedgerSequence: 10_000_000,
                 };
 
                 const tx = await client.submitAndWait(txBlob, { wallet });
@@ -339,7 +346,7 @@ function BusinessHome() {
             })
           );
 
-          // deletes sell offers from dbd
+          // deletes sell offers from db
           response = await axios.delete("/api/v1/receivable/sellOffers");
           console.log(response.data);
         }
@@ -362,8 +369,8 @@ function BusinessHome() {
             const cid = convertHexToString(nft.URI);
             try {
               const metadata = (
-                await axios.get(`https://ipfs.io/ipfs/${cid}`, {
-                  withCredentials: false,
+                await axios.post("/api/v1/ipfs", {
+                  cid,
                 })
               ).data;
               console.log(metadata);
@@ -373,8 +380,9 @@ function BusinessHome() {
                 { ...metadata, id: nft.NFTokenID },
               ]);
               setAmountOwed(
-                (current) => current + parseFloat(dropsToXrp(metadata.amount)),
-                10
+                (current) =>
+                  current +
+                  xrpToUsd(parseFloat(dropsToXrp(metadata.amount)), 10)
               );
             } catch (error) {
               console.log(error);
@@ -389,7 +397,7 @@ function BusinessHome() {
     if (wallet) {
       getReceivables();
     }
-  }, [wallet]);
+  }, [wallet, reload]);
 
   // gets sent receivables (xrpl check)
   useEffect(() => {
@@ -413,7 +421,7 @@ function BusinessHome() {
       respChecks.forEach((checkObj) => {
         setChecks((current) => [
           ...current,
-          { amount: checkObj.SendMax, due: checkObj.DestinationTag },
+          { amount: checkObj.SendMax, due: checkObj.SourceTag },
         ]);
 
         setAmountDue(
@@ -426,17 +434,18 @@ function BusinessHome() {
     if (wallet) {
       getChecks();
     }
-  }, [wallet]);
+  }, [wallet, reload]);
 
+  // calculates net account
   useEffect(() => {
     setNet(amountOwed - amountDue);
-  }, [amountOwed, amountDue]);
+  }, [amountOwed, amountDue, reload]);
 
   return (
     <div className="business-container">
       <div className="header">Dashboard - {businessName}</div>
 
-      {hasWallet && wallet && !keyPopupOpen ? (
+      {hasWallet && mnemonic && !keyPopupOpen ? (
         <div className="dashboard">
           <div className="left">
             <div className="header">Receivables</div>
@@ -598,23 +607,18 @@ function BusinessHome() {
       ) : (
         <>
           <div className="action-container">
-            {hasWallet && !wallet ? (
+            {hasWallet && !mnemonic ? (
               <>
                 <div className="action-header">
                   Enter your mnemonic to enter the platform. It will NOT leave
                   this personal device.
                 </div>
                 <input
-                  value={mnemonic}
-                  onChange={(e) => setMnemonic(e.target.value)}
+                  value={mnemonicInput}
+                  onChange={(e) => setMnemonicInput(e.target.value)}
                 />
 
-                <div
-                  className="button"
-                  value={mnemonic}
-                  onChange={(e) => setMnemonic(e.target.value)}
-                  onClick={submitKey}
-                >
+                <div className="button" onClick={submitKey}>
                   Enter
                 </div>
               </>

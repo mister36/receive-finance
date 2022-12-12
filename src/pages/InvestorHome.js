@@ -5,30 +5,33 @@ import {
   AccountSetAsfFlags,
   convertHexToString,
   xrpToDrops,
+  dropsToXrp,
 } from "xrpl";
 import axios from "axios";
 import { useAuthStore } from "../stores";
 import "../App.css";
 
 function InvestorHome() {
-  const [wallet, updateWallet] = useAuthStore((state) => [
-    state.wallet,
+  const [mnemonic, updateWallet] = useAuthStore((state) => [
+    state.mnemonic,
     state.updateWallet,
   ]);
 
-  const [mnemonic, setMnemonic] = useState("");
+  const [mnemonicInput, setMnemonicInput] = useState("");
+  const [wallet, setWallet] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
   const [xrpBalance, setXrpBalance] = useState(0);
+  const [totalPosition, setTotalPosition] = useState(0);
+  const [totalWithdrawableAmount, setTotalWithdrawableAmount] = useState(0);
   const [poolAddress, setPoolAddress] = useState("");
   const [poolBalance, setPoolBalance] = useState(0);
+  const [reload, setReload] = useState(0);
 
   const buttonRef = useRef(null);
 
   const submitKey = async () => {
-    const submittedWallet = Wallet.fromMnemonic(mnemonic);
-
-    console.log(submittedWallet);
-    updateWallet(submittedWallet);
+    updateWallet(mnemonicInput);
+    setWallet(Wallet.fromMnemonic(mnemonicInput));
   };
 
   const deposit = async () => {
@@ -47,10 +50,22 @@ function InvestorHome() {
       const response = await client.submitAndWait(txBlob, { wallet });
       console.log(response.result.meta.TransactionResult);
       setDepositAmount(0);
+      setReload((current) => current + 1);
     } catch (error) {
       console.log(error);
     }
   };
+
+  // sets wallet from mnemonic
+  useEffect(() => {
+    if (
+      mnemonic.split(" ").length === 12 ||
+      mnemonic.split(" ").length === 15
+    ) {
+      setWallet(Wallet.fromMnemonic(mnemonic));
+      console.log(wallet);
+    }
+  }, [mnemonic]);
 
   // gets balance
   useEffect(() => {
@@ -64,7 +79,7 @@ function InvestorHome() {
           (
             await client.request({
               command: "account_info",
-              account: wallet.address,
+              account: wallet.classicAddress,
               ledger_index: "validated",
             })
           ).result.account_data.Balance / 1_000_000;
@@ -85,7 +100,7 @@ function InvestorHome() {
     if (wallet) {
       getXrpBalance();
     }
-  }, [wallet]);
+  }, [wallet, reload]);
 
   // gets pool size
   useEffect(() => {
@@ -112,7 +127,96 @@ function InvestorHome() {
       }
     };
     getPoolBalance();
-  }, []);
+  }, [reload]);
+
+  // gets incoming entitles
+  useEffect(() => {
+    const getEntitles = async () => {
+      try {
+        const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+        await client.connect();
+
+        const offers = (
+          await axios.post("/api/v1/investors/offers", {
+            investor: wallet.classicAddress,
+          })
+        ).data.offers;
+
+        if (offers.length) {
+          console.log("offers:", offers);
+          // accepts sell offers
+          await Promise.all(
+            offers.map(async (offer) => {
+              try {
+                const txBlob = {
+                  TransactionType: "NFTokenAcceptOffer",
+                  Account: wallet.classicAddress,
+                  NFTokenSellOffer: offer,
+                  LastLedgerSequence: null,
+                };
+
+                const tx = await client.submitAndWait(txBlob, { wallet });
+                console.log(tx.result);
+                console.log(tx.result.meta.TransactionResult);
+              } catch (error) {
+                console.log(error);
+              }
+            })
+          );
+
+          // deletes sell offers from db
+          const response = await axios.post("/api/v1/investors/offers/remove", {
+            investor: wallet.classicAddress,
+          });
+          console.log(response.data);
+
+          setReload((current) => current + 1);
+        }
+
+        const nfts = (
+          await client.request({
+            command: "account_nfts",
+            account: wallet.classicAddress,
+            ledger_index: "validated",
+          })
+        ).result.account_nfts;
+
+        console.log("entitled nfts:", nfts);
+
+        let total = 0;
+        let totalWithdrawable = 0;
+
+        nfts.forEach((nft) => {
+          const meta = JSON.parse(convertHexToString(nft.URI));
+          console.log(meta);
+
+          total += meta.entitledTo;
+
+          if (meta.date < Math.round(Date.now() / 1000)) {
+            totalWithdrawable += meta.entitledTo;
+          }
+        });
+
+        const deposit =
+          (
+            await axios.post("/api/v1/investors/deposit", {
+              investor: wallet.classicAddress,
+            })
+          ).data.amount || 0;
+
+        setTotalPosition(dropsToXrp(Math.round(deposit + total)));
+        setTotalWithdrawableAmount(
+          dropsToXrp(Math.round(deposit + totalWithdrawable))
+        );
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    if (wallet) {
+      getEntitles();
+    }
+  }, [wallet, reload]);
 
   useEffect(() => {
     if (depositAmount >= 0 && buttonRef.current) {
@@ -138,7 +242,13 @@ function InvestorHome() {
                 className="header-box"
                 style={{ borderRight: "1px solid #E0E0E0" }}
               >
-                <div>Funds</div>
+                <div>Total Position</div>
+              </div>
+              <div
+                className="header-box"
+                style={{ borderRight: "1px solid #E0E0E0" }}
+              >
+                <div style={{ width: "75%" }}>Total Withdrawable Amount</div>
               </div>
               <div className="header-box">
                 <div>Pool Size</div>
@@ -152,7 +262,11 @@ function InvestorHome() {
               </div>
               <div className="value-box">
                 <img src="xrp.png" className="logo" alt="" />
-                <div>32,180</div>
+                <div>{totalPosition}</div>
+              </div>
+              <div className="value-box">
+                <img src="xrp.png" className="logo" alt="" />
+                <div>{totalWithdrawableAmount}</div>
               </div>
               <div className="value-box">
                 <img src="xrp.png" className="logo" alt="" />
@@ -188,16 +302,11 @@ function InvestorHome() {
             personal device.
           </div>
           <input
-            value={mnemonic}
-            onChange={(e) => setMnemonic(e.target.value)}
+            value={mnemonicInput}
+            onChange={(e) => setMnemonicInput(e.target.value)}
           />
 
-          <div
-            className="button"
-            value={mnemonic}
-            onChange={(e) => setMnemonic(e.target.value)}
-            onClick={submitKey}
-          >
+          <div className="button" onClick={submitKey}>
             Enter
           </div>
         </div>
