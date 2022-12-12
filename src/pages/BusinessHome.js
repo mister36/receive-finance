@@ -12,6 +12,7 @@ import { TypeAnimation } from "react-type-animation";
 import axios from "axios";
 import Select from "react-select";
 import { generateMnemonic } from "bip39";
+import ContentLoader, { Facebook } from "react-content-loader";
 import { useAuthStore } from "../stores";
 import Receivable from "../components/Receivable";
 import "reactjs-popup/dist/index.css";
@@ -58,6 +59,26 @@ function convertTwoDecimals(num) {
   return num.toString().match(/^-?\d+(?:\.\d{0,2})?/)[0];
 }
 
+const MyLoader = () => (
+  <ContentLoader
+    viewBox="0 0 445 217.5"
+    backgroundColor="white"
+    backgroundOpacity={0.1}
+    foregroundColor="white"
+    foregroundOpacity={0.2}
+    style={{
+      width: "455px",
+      height: "220.5px",
+      padding: "5px",
+      borderRadius: "10px",
+      transform: "translateX(-6px)",
+    }}
+  >
+    {/* Only SVG shapes */}
+    <rect x="0" y="0" rx="10" ry="10" width="445" height="217.5" />
+  </ContentLoader>
+);
+
 function BusinessHome() {
   const [
     mnemonic,
@@ -94,6 +115,9 @@ function BusinessHome() {
   const [amountDue, setAmountDue] = useState(0);
   const [net, setNet] = useState(0);
   const [reload, setReload] = useState(0);
+  const [checksLoaded, setChecksLoaded] = useState(false);
+  const [receivablesLoaded, setReceivablesLoaded] = useState(false);
+  const [createReceivableClicked, setCreateReceivableClicked] = useState(false);
 
   const generateWallet = async () => {
     const newMnemonic = generateMnemonic();
@@ -131,16 +155,14 @@ function BusinessHome() {
   };
 
   const createReceivable = async () => {
+    if (createReceivableClicked) {
+      return;
+    }
+
+    setCreateReceivableClicked(true);
     buttonRef.current.classList.add("inactive");
 
     const dateNum = Math.floor(new Date(date).getTime() / 1000);
-    // const checkMinimumUsageDate = new Date(date);
-    // const dateNum = parseInt(
-    //   `${
-    //     checkMinimumUsageDate.getMonth() + 1
-    //   }${checkMinimumUsageDate.getDate()}${checkMinimumUsageDate.getFullYear()}`,
-    //   10
-    // );
 
     try {
       const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
@@ -178,8 +200,10 @@ function BusinessHome() {
       setAmount("");
       setDate("");
       setReload((current) => current + 1);
+      setCreateReceivableClicked(false);
     } catch (error) {
       console.log(error);
+      setCreateReceivableClicked(false);
     }
   };
 
@@ -388,7 +412,11 @@ function BusinessHome() {
               console.log(error);
             }
           })
-        );
+        )
+          .then(() => {
+            setReceivablesLoaded(true);
+          })
+          .catch(() => setReceivablesLoaded(true));
       } catch (error) {
         console.log(error);
       }
@@ -429,6 +457,8 @@ function BusinessHome() {
             current + xrpToUsd(parseFloat(dropsToXrp(checkObj.SendMax, 10)))
         );
       });
+
+      setChecksLoaded(true);
     };
 
     if (wallet) {
@@ -454,22 +484,26 @@ function BusinessHome() {
               <div className="out">
                 <div className="header">Out</div>
 
-                <div className="receivables-box">
-                  <div className="receivables-wrapper">
-                    {checks.map((check) => {
-                      return (
-                        <Receivable
-                          type="out"
-                          date={new Date(check.due * 1000)}
-                          amount={xrpToUsd(
-                            dropsToXrp(parseFloat(check.amount, 10))
-                          )}
-                          key={Math.random()}
-                        />
-                      );
-                    })}
+                {checksLoaded ? (
+                  <div className="receivables-box">
+                    <div className="receivables-wrapper">
+                      {checks.map((check) => {
+                        return (
+                          <Receivable
+                            type="out"
+                            date={new Date(check.due * 1000)}
+                            amount={xrpToUsd(
+                              dropsToXrp(parseFloat(check.amount, 10))
+                            )}
+                            key={Math.random()}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <MyLoader />
+                )}
               </div>
 
               <div className="horizontal-line"></div>
@@ -477,24 +511,28 @@ function BusinessHome() {
               <div className="in">
                 <div className="header">In</div>
 
-                <div className="receivables-box">
-                  <div className="receivables-wrapper">
-                    {inReceivables.map((nft) => {
-                      return (
-                        <Receivable
-                          type="in"
-                          name={nft.debtor}
-                          date={new Date(nft.due * 1000).toLocaleDateString()}
-                          amount={xrpToUsd(dropsToXrp(nft.amount))}
-                          key={Math.random()}
-                          createSellOffer={() =>
-                            createSellOffer(nft.id, nft.amount)
-                          }
-                        />
-                      );
-                    })}
+                {receivablesLoaded ? (
+                  <div className="receivables-box">
+                    <div className="receivables-wrapper">
+                      {inReceivables.map((nft) => {
+                        return (
+                          <Receivable
+                            type="in"
+                            name={nft.debtor}
+                            date={new Date(nft.due * 1000).toLocaleDateString()}
+                            amount={xrpToUsd(dropsToXrp(nft.amount))}
+                            key={Math.random()}
+                            createSellOffer={() =>
+                              createSellOffer(nft.id, nft.amount)
+                            }
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <MyLoader />
+                )}
               </div>
             </div>
           </div>

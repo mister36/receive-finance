@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 function Receivable({
   type = "",
   name = "",
@@ -13,9 +15,21 @@ function Receivable({
   const now = new Date();
   const diffTime = Math.abs(date - now);
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  const containerRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  const [clicked, setClicked] = useState(false);
+
+  // anim
+  useEffect(() => {
+    containerRef.current.classList.add("anim");
+  }, []);
+
   return (
     <div
       className="receivable-component"
+      ref={containerRef}
       style={{ paddingRight: type === "out" ? "5px" : "0px" }}
     >
       {type === "out" ? (
@@ -41,9 +55,17 @@ function Receivable({
           <div id="date">{date}</div>
 
           <div
-            id="button"
+            className="button active"
             style={{ background: type === "out" ? "#F0B700" : "#1d9e23" }}
-            onClick={createSellOffer}
+            onClick={() => {
+              if (clicked) {
+                return;
+              }
+              buttonRef.current.classList.remove("active");
+              createSellOffer();
+              setClicked(true);
+            }}
+            ref={buttonRef}
           >
             {type === "out" ? "PAY" : "SELL"}
           </div>

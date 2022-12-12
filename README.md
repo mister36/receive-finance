@@ -1,70 +1,21 @@
-# Getting Started with Create React App
+# Receive Finance
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## What Receive Finance does
 
-## Available Scripts
+Receive Finance is a platform targeted for three types of users: businesses that issue and accept accounts receivables, and investors. Businesses can obtain A/Rs directly from their customers and sell them instantly through Receive’s pool of funds for **98% of its face value**. Customers are automatically billed after a specific payment date.
 
-In the project directory, you can run:
+One of the most disruptive characteristics of Receive Finance is that it turns A/R into an investment for private investors. Traditionally, only certain institutions are able to profit from lending to A/R holders. With Receive, any investor can deposit into Receive’s liquidity pool, and on every A/R sale, receive a fraction of the 2% fee. Instead of earning yield from faulty tokenomics, users of DeFi can now generate returns from real-world activities.
 
-### `npm start`
+## Technical Insights
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Receive Finance consists of interactions between the React frontend, the Node.JS backend, and the XRP ledger.
+- Accounts receivables and investor entitlements are tokenized using NFTokens
+- Accounts receivables metadata is stored on IPFS
+- Funds are automatically pulled from debtors using Checks and a cron job
+- Payments and A/R sales to the Receivable Pool are tracked and handled in realtime using WebSockets
+- Business Information and other details that can’t be stored in a decentralized fashion are kept on a MongoDB server
+- Private keys / seeds / mnemonics NEVER leave the frontend
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Contact
 
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Adam Achebe — [@AdamIAchebe](https://twitter.com/AdamIAchebe) - achebe@stanford.edu

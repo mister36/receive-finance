@@ -1,3 +1,15 @@
+@keyframes containerAnim {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .receivable-component {
   display: flex;
   justify-content: space-between;
@@ -9,6 +21,12 @@
   border-radius: 10px;
   box-shadow: 7px 3px 17px -1px rgba(0, 0, 0, 0.75);
   margin-bottom: 30px;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.receivable-component.anim {
+  animation: containerAnim 500ms forwards ease-in;
 }
 
 .receivable-component .left {
@@ -45,7 +63,7 @@
   /* width: 20%; */
 }
 
-.receivable-component #button {
+.receivable-component .button {
   display: flex;
   width: 50px;
   height: 100%;
@@ -54,5 +72,11 @@
   font-family: "HeroNewSemiBold";
   justify-content: center;
   align-items: center;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.receivable-component .active.button {
+  opacity: 1;
   cursor: pointer;
 }
