@@ -40,12 +40,13 @@ exports.getInvestorDeposit = async (req, res) => {
   const { investor } = req.body;
 
   try {
-    const amount = (
-      await main.client.db().collection("investors").findOne({ investor })
-    ).amount;
+    const investorDoc = await main.client
+      .db()
+      .collection("investors")
+      .findOne({ investor });
 
     res.status(200).json({
-      amount,
+      amount: investorDoc ? investorDoc.amount : 0,
     });
   } catch (error) {
     console.log(error);

@@ -292,3 +292,73 @@ exports.test = async (req, res) => {
     res.status(400);
   }
 };
+
+exports.withdraw = async (req, res) => {
+  const { investor } = req.body;
+  const poolWallet = xrpl.Wallet.fromMnemonic(process.env.POOL_MNEMONIC);
+
+  try {
+    const client = new xrpl.Client("wss://xls20-sandbox.rippletest.net:51233");
+    await client.connect();
+
+    const investorCollection = main.client.db().collection("investors");
+    const investorDoc = await investorCollection.findOne({ investor });
+    const amount = investorDoc ? investorDoc.amount : 0;
+
+    // deletes deposit entry
+    await investorCollection.findOneAndDelete({ investor });
+
+    // gets entitled nfts
+    const nfts = (
+      await client.request({
+        command: "account_nfts",
+        account: investor,
+        ledger_index: "validated",
+      })
+    ).result.account_nfts;
+
+    console.log("entitled nfts:", nfts);
+
+    let totalWithdrawable = 0;
+
+    await Promise.all(
+      nfts.map(async (nft) => {
+        const meta = JSON.parse(xrpl.convertHexToString(nft.URI));
+        console.log(meta);
+
+        if (meta.date < Math.round(Date.now() / 1000)) {
+          totalWithdrawable += meta.entitledTo;
+
+          // console.log("RUNNING HERE");
+          // console.log(poolWallet.classicAddress, investor, nft.NFTokenID);
+
+          // burns token
+          const txBlob = {
+            TransactionType: "NFTokenBurn",
+            Account: poolWallet.classicAddress,
+            Owner: investor,
+            NFTokenID: nft.NFTokenID,
+          };
+
+          // console.log("MY CODE:", txBlob);
+
+          const tx = await client.submitAndWait(txBlob, { wallet: poolWallet });
+          console.log(tx.result.meta.TransactionResult);
+        }
+      })
+    );
+
+    // pays investor original deposit + entitled money with date < now
+    const txBlob = {
+      TransactionType: "Payment",
+      Account: poolWallet.classicAddress,
+      Amount: Math.round(amount + totalWithdrawable).toString(),
+      Destination: investor,
+    };
+
+    let tx = await client.submitAndWait(txBlob, { wallet: poolWallet });
+    console.log(tx.result.meta.TransactionResult);
+  } catch (error) {
+    console.log(error);
+  }
+};

@@ -28,6 +28,7 @@ function InvestorHome() {
   const [reload, setReload] = useState(0);
 
   const buttonRef = useRef(null);
+  const withdrawButtonRef = useRef(null);
 
   const submitKey = async () => {
     updateWallet(mnemonicInput);
@@ -51,6 +52,24 @@ function InvestorHome() {
       console.log(response.result.meta.TransactionResult);
       setDepositAmount(0);
       setReload((current) => current + 1);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const withdraw = async () => {
+    try {
+      withdrawButtonRef.current.classList.remove("active");
+      const client = new Client("wss://xls20-sandbox.rippletest.net:51233");
+      await client.connect();
+
+      const response = await axios.post("/api/v1/investor/withdraw", {
+        investor: wallet.classicAddress,
+      });
+
+      console.log(response.data);
+      setReload((current) => current + 1);
+      withdrawButtonRef.current.classList.add("active");
     } catch (error) {
       console.log(error);
     }
@@ -162,15 +181,17 @@ function InvestorHome() {
                 console.log(error);
               }
             })
-          );
-
-          // deletes sell offers from db
-          const response = await axios.post("/api/v1/investors/offers/remove", {
-            investor: wallet.classicAddress,
+          ).then(() => {
+            // deletes sell offers from db
+            return axios
+              .post("/api/v1/investors/offers/remove", {
+                investor: wallet.classicAddress,
+              })
+              .then((response) => {
+                console.log(response.data);
+                setReload((current) => current + 1);
+              });
           });
-          console.log(response.data);
-
-          setReload((current) => current + 1);
         }
 
         const nfts = (
@@ -194,6 +215,7 @@ function InvestorHome() {
 
           if (meta.date < Math.round(Date.now() / 1000)) {
             totalWithdrawable += meta.entitledTo;
+            console.log("YEAHH");
           }
         });
 
@@ -291,7 +313,13 @@ function InvestorHome() {
             </div>
             <div className="horizontal-line"></div>
             <div className="withdraw-container">
-              <div className="button">Withdraw</div>
+              <div
+                className="button active"
+                onClick={withdraw}
+                ref={withdrawButtonRef}
+              >
+                Withdraw
+              </div>
             </div>
           </div>
         </div>

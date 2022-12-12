@@ -176,5 +176,15 @@
   border: 1px solid #f24b4b;
   color: #f24b4b;
   width: 100px;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.investor-container
+  .investor-contents-wrapper
+  .pool-actions
+  .withdraw-container
+  .button.active {
+  opacity: 1;
   cursor: pointer;
 }

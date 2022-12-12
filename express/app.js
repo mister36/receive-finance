@@ -44,6 +44,7 @@ app.post("/api/v1/pool/deposit", poolController.deposit);
 app.post("/api/v1/investors/deposit", userController.getInvestorDeposit);
 app.post("/api/v1/investors/offers", nftController.getInvestorOffers);
 app.post("/api/v1/investors/offers/remove", nftController.deleteInvestorOffers);
+app.post("/api/v1/investor/withdraw", nftController.withdraw);
 
 app.get("/api/v1/test", nftController.test);
 
